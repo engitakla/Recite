@@ -405,7 +405,7 @@ td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-
   function buildBlanks() {
     const p = cur(); tokens = p ? tokenize(p.text) : [];
     const elig = [];
-    tokens.forEach((t, i) => { if (t.w && !STOP.has(t.v.toLowerCase())) elig.push(i); });
+    tokens.forEach((t, i) => { if (t.w && !STOP.has(t.v.toLowerCase()) && !/^\p{N}+$/u.test(t.v)) elig.push(i); });
     let n = Math.round(elig.length * prefs.pct / 100);
     if (prefs.pct > 0 && elig.length && n === 0) n = 1;
     blanks = new Set(shuffle(elig).slice(0, n));
