@@ -1,0 +1,699 @@
+<title>Recite Memorizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: library rail on the left, one worksheet-style passage on the right; blanks are ruled lines like a cloze test. */
+:root {
+  --bg: #EDF0F4;
+  --surface: #FFFFFF;
+  --ink: #18212C;
+  --muted: #5A6575;
+  --line: #D2D8E0;
+  --accent: #1F5C8E;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E1EAF4;
+  --blank: #F2F5F9;
+  --ok: #24744A;
+  --ok-soft: #E2F2E8;
+  --bad: #B0281F;
+  --bad-soft: #FBE7E5;
+  --reveal: #8A5A00;
+  --font-text: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151B; --surface: #1A2029; --ink: #E3E8EE; --muted: #98A3B2; --line: #2D3642;
+    --accent: #84B4E2; --accent-ink: #0E1620; --accent-soft: #1E2C3C; --blank: #202835;
+    --ok: #74C795; --ok-soft: #173024; --bad: #F2897F; --bad-soft: #3A1D1B; --reveal: #E5B85C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151B; --surface: #1A2029; --ink: #E3E8EE; --muted: #98A3B2; --line: #2D3642;
+  --accent: #84B4E2; --accent-ink: #0E1620; --accent-soft: #1E2C3C; --blank: #202835;
+  --ok: #74C795; --ok-soft: #173024; --bad: #F2897F; --bad-soft: #3A1D1B; --reveal: #E5B85C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; padding: 0 16px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 20px 48px; }
+
+.top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.brand { font-family: var(--font-text); font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+.brand em { color: var(--accent); font-style: italic; font-weight: 400; }
+.tag { color: var(--muted); font-size: 14px; }
+
+.app { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 780px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+button, .btn { font: inherit; font-size: 14px; font-weight: 600; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 7px 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+button:hover, .btn:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.ghost { background: transparent; }
+button.danger { color: var(--bad); }
+button.danger.armed { background: var(--bad); color: var(--surface); border-color: var(--bad); }
+button:focus-visible, .btn:focus-within, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Library */
+.side h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0; font-weight: 600; }
+.side-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.list button { width: 100%; text-align: left; border: 0; background: transparent; padding: 9px 10px; border-radius: 8px; display: block; font-weight: 500; }
+.list button:hover { background: var(--accent-soft); }
+.list button[aria-current="true"] { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.list .lt { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list .ls { display: block; font-size: 12px; color: var(--muted); font-weight: 400; font-family: var(--font-mono); }
+.note { font-size: 12px; color: var(--muted); margin: 14px 10px 0; }
+
+/* Passage view */
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px clamp(16px, 4vw, 36px) 28px; min-width: 0; }
+.ph { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.eyebrow { margin: 0 0 2px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+h1 { font-family: var(--font-text); font-weight: 600; font-size: clamp(24px, 3.4vw, 32px); line-height: 1.15; margin: 0; text-wrap: balance; }
+.ph-actions { display: flex; gap: 8px; }
+
+.seg { display: inline-flex; background: var(--blank); border-radius: 9px; padding: 3px; margin: 20px 0 14px; }
+.seg button { border: 0; background: transparent; padding: 6px 16px; font-weight: 600; color: var(--muted); }
+.seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+.bar { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.amount { display: flex; align-items: center; gap: 12px; flex: 1 1 260px; }
+.amount label { font-weight: 600; font-size: 14px; white-space: nowrap; }
+.amount input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
+.pct { font-family: var(--font-mono); font-size: 20px; font-weight: 500; min-width: 4ch; text-align: right; color: var(--accent); font-variant-numeric: tabular-nums; }
+.presets { display: flex; gap: 4px; }
+.presets button { padding: 4px 8px; font-size: 12px; font-family: var(--font-mono); font-weight: 500; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.opts label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.opts input { accent-color: var(--accent); }
+
+.passage { font-family: var(--font-text); font-size: clamp(18px, 2.1vw, 21px); line-height: 2.05; white-space: pre-wrap; overflow-wrap: break-word; padding: 22px 0 10px; max-width: 68ch; }
+.passage.read { line-height: 1.7; }
+.blank { font: inherit; font-size: 0.95em; color: var(--ink); background: var(--blank); border: 0; border-bottom: 2px solid var(--muted); border-radius: 4px 4px 0 0; padding: 0 4px; margin: 0 1px; text-align: center; line-height: 1.4; max-width: 100%; transition: background .15s, border-color .15s; }
+.blank::placeholder { color: var(--muted); opacity: .7; }
+.blank:focus { outline: none; border-bottom-color: var(--accent); background: var(--accent-soft); }
+.blank.ok { border-bottom-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+.blank.bad { border-bottom-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+.blank.revealed { border-bottom-color: var(--reveal); color: var(--reveal); background: transparent; font-style: italic; }
+
+.foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 16px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.score { font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.score strong { color: var(--ink); font-weight: 500; }
+.score .good { color: var(--ok); }
+.nudge { margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: var(--ok-soft); color: var(--ok); font-weight: 600; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+
+/* Audio */
+.audio { margin-top: 28px; }
+.audio-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.audio h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0; font-weight: 600; }
+.audio-ctrl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.audio-ctrl select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.audio-ctrl input[type=checkbox] { accent-color: var(--accent); }
+.btn input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.tracks { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.track { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); }
+.track .tn { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track audio { grid-column: 1 / -1; width: 100%; height: 36px; }
+.track button { padding: 3px 9px; font-size: 12px; }
+.empty-audio { border: 1px dashed var(--line); border-radius: var(--r); padding: 18px; color: var(--muted); font-size: 14px; text-align: center; }
+.empty-audio.drag { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* Editor */
+.field { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
+.field label { font-weight: 600; font-size: 14px; }
+.field input[type=text], .field textarea { font: inherit; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); padding: 10px 12px; width: 100%; }
+.field textarea { font-family: var(--font-text); font-size: 18px; line-height: 1.6; min-height: 280px; resize: vertical; }
+.hint { font-size: 13px; color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
+.err { color: var(--bad); font-size: 13px; }
+
+body:not(.can-edit) .owner-only { display: none !important; }
+.banner { margin: 14px 0 0; padding: 12px; border-radius: var(--r); background: var(--accent-soft); font-size: 13px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.banner p { margin: 0; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 500; max-width: calc(100% - 32px); box-shadow: 0 6px 20px rgba(0,0,0,.2); z-index: 10; }
+.toast.err { background: var(--bad); color: var(--surface); }
+body.busy button.owner-only, body.busy .owner-only button, body.busy .owner-only.btn { opacity: .55; pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Recite <em>memorizer</em></div>
+    <div class="tag">Paste a passage, hide part of it, and fill the gaps until you know it.</div>
+  </header>
+
+  <div class="app">
+    <aside class="side">
+      <div class="side-head">
+        <h2>Passages</h2>
+        <button id="newBtn" class="ghost owner-only" type="button">+ New</button>
+      </div>
+      <ul class="list" id="list"></ul>
+      <div class="banner owner-only" id="importBox" hidden>
+        <p id="importText">This browser has passages from the earlier version of the app.</p>
+        <button id="importBtn" type="button">Add them to the shared library</button>
+      </div>
+      <p class="note" id="libNote">Passages and audio are chosen by the person who runs this page. Your scores stay on this device.</p>
+    </aside>
+
+    <main class="sheet">
+      <section id="viewPassage">
+        <div class="ph">
+          <div>
+            <p class="eyebrow" id="meta"></p>
+            <h1 id="ptitle"></h1>
+          </div>
+          <div class="ph-actions owner-only">
+            <button id="editBtn" type="button">Edit</button>
+            <button id="delBtn" class="danger" type="button">Delete</button>
+          </div>
+        </div>
+
+        <div class="seg" role="tablist" aria-label="Mode">
+          <button id="tabPractice" role="tab" type="button" aria-selected="true">Practice</button>
+          <button id="tabRead" role="tab" type="button" aria-selected="false">Read</button>
+        </div>
+
+        <div id="practiceBar" class="bar">
+          <div class="amount">
+            <label for="pct">Blanked out</label>
+            <input id="pct" type="range" min="10" max="100" step="5" value="50">
+            <span class="pct" id="pctOut">50%</span>
+          </div>
+          <div class="presets" id="presets">
+            <button type="button" data-p="25">25</button>
+            <button type="button" data-p="50">50</button>
+            <button type="button" data-p="60">60</button>
+            <button type="button" data-p="75">75</button>
+            <button type="button" data-p="100">100</button>
+          </div>
+          <div class="opts">
+            <label><input type="checkbox" id="optFirst"> Show first letters</label>
+            <label><input type="checkbox" id="optLive" checked> Check as I type</label>
+          </div>
+        </div>
+
+        <article id="text" class="passage" aria-live="off"></article>
+
+        <div id="practiceFoot">
+          <div class="foot">
+            <div class="score" id="score"></div>
+            <div class="actions">
+              <button id="hintBtn" type="button" title="Adds the next letter to the blank you are in">Hint</button>
+              <button id="revealBtn" type="button">Reveal answers</button>
+              <button id="shuffleBtn" type="button">New blanks</button>
+              <button id="checkBtn" class="primary" type="button">Check</button>
+            </div>
+          </div>
+          <div id="nudge" class="nudge" hidden>
+            <span id="nudgeText">Perfect score.</span>
+            <button id="harderBtn" type="button">Hide 10% more</button>
+          </div>
+        </div>
+
+        <section class="audio" aria-labelledby="audioH">
+          <div class="audio-head">
+            <h2 id="audioH">Audio for this passage</h2>
+            <div class="audio-ctrl">
+              <label>Speed
+                <select id="speed">
+                  <option value="0.5">0.5×</option>
+                  <option value="0.75">0.75×</option>
+                  <option value="1" selected>1×</option>
+                  <option value="1.25">1.25×</option>
+                  <option value="1.5">1.5×</option>
+                </select>
+              </label>
+              <label><input type="checkbox" id="loop"> Repeat</label>
+              <label class="btn owner-only">Upload audio
+                <input id="audioFile" type="file" accept="audio/*" multiple>
+              </label>
+            </div>
+          </div>
+          <ul class="tracks" id="tracks"></ul>
+          <div class="empty-audio" id="audioEmpty">No audio for this passage.</div>
+          <p class="err" id="audioErr" hidden></p>
+        </section>
+      </section>
+
+      <section id="viewEdit" hidden>
+        <h1 id="editHeading">New passage</h1>
+        <form id="editForm" novalidate>
+          <div class="field">
+            <label for="fTitle">Title</label>
+            <input type="text" id="fTitle" placeholder="e.g. Psalm 23, Hamlet's soliloquy, Chapter 3 definitions">
+          </div>
+          <div class="field">
+            <label for="fText">Text to memorize</label>
+            <textarea id="fText" placeholder="Paste or type the passage here. Line breaks are kept."></textarea>
+            <div class="row" style="margin-top:4px">
+              <label class="btn">Upload a text file
+                <input id="txtFile" type="file" accept=".txt,.md,.text,text/plain">
+              </label>
+              <span class="hint">.txt or .md files. For Word or PDF, copy the text and paste it above.</span>
+            </div>
+          </div>
+          <p class="err" id="formErr" hidden></p>
+          <div class="row">
+            <button class="primary" type="submit">Save passage</button>
+            <button type="button" id="cancelEdit">Cancel</button>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  const SAMPLE = {
+    id: 'sample-gettysburg',
+    title: 'Gettysburg Address (example)',
+    text: "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.\n\nNow we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this.",
+    audio: []
+  };
+  const STOP = new Set('a an the of to in on at by for and or but nor so as is am are was were be been it its i we he she they you me us him her them my our your his their this that these those with from into than then not no do does did has have had will shall can may'.split(' '));
+  const MAX_AUDIO = 15 * 1024 * 1024;
+  const AUDIO_TYPES = { mp3: 'audio/mpeg', m4a: 'audio/mp4', mp4: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', webm: 'audio/webm', flac: 'audio/flac' };
+
+  // ---------- per-viewer storage (scores and settings only) ----------
+  const ls = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const prefs = Object.assign({ current: null, pct: 50, mode: 'practice', first: false, live: true, speed: '1', loop: false }, ls.get('recite.prefs', {}));
+  const best = ls.get('recite.best', {});
+  const savePrefs = () => ls.set('recite.prefs', prefs);
+
+  // ---------- shared library (library.json + audio/ files published with the page) ----------
+  let lib = { passages: [SAMPLE] };
+  let art = null, canWrite = false, busy = false;
+  const localAudio = new Map(); // audio id -> blob URL for files uploaded in this view
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const audioSrc = a => localAudio.get(a.id) || a.file;
+
+  async function loadLib() {
+    try {
+      const r = await fetch('library.json', { cache: 'no-store' });
+      if (!r.ok) throw new Error('missing');
+      const j = await r.json();
+      if (Array.isArray(j.passages)) lib = j;
+    } catch (e) {}
+    lib.passages.forEach(p => { if (!Array.isArray(p.audio)) p.audio = []; });
+  }
+
+  const $ = id => document.getElementById(id);
+  let toastTimer = null;
+  function toast(msg, isErr) {
+    const t = $('toast'); t.textContent = msg; t.classList.toggle('err', !!isErr); t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, isErr ? 7000 : 2500);
+  }
+  function setBusy(b) { busy = b; document.body.classList.toggle('busy', b); }
+  function setRole(w) {
+    canWrite = w;
+    document.body.classList.toggle('can-edit', w);
+    $('libNote').textContent = w
+      ? 'You manage this library. Everyone you share the page with sees these passages and audio. Scores stay on each person’s device.'
+      : 'Passages and audio are chosen by the person who runs this page. Your scores stay on this device.';
+    $('audioEmpty').textContent = w ? 'No audio yet. Upload an MP3, M4A or WAV recording of this passage, or drop files here.' : 'No audio for this passage.';
+    if (w) checkImport();
+  }
+
+  async function save(next, files, okMsg) {
+    if (!art || busy) return false;
+    setBusy(true); toast('Saving…');
+    try {
+      await art.publish(Object.assign({ 'library.json': { content: JSON.stringify(next, null, 1), contentType: 'application/json' } }, files || {}));
+      lib = next; toast(okMsg || 'Saved');
+      return true;
+    } catch (e) {
+      const code = e && e.code;
+      if (code === 'conflict') toast('Someone else saved a change first. Loading the latest version…', true);
+      else if (code === 'not_writer' || code === 'not_granted' || code === 'consent_required') { setRole(false); toast('You can practice here, but only the page owner can change the library.', true); }
+      else if (code === 'capability_disabled' || code === 'capability_removed' || code === 'not_declared') toast('Changes can’t be saved from this view. Open the page from your own claude.ai account, and turn off any public link while you edit.', true);
+      else if (code === 'too_large') toast('That upload is too large. Keep each audio file under 15 MB and add a few at a time.', true);
+      else if (code === 'rate_limited') toast('Too many saves in a row. Wait a minute, then try again.', true);
+      else toast('The change wasn’t saved. Check your connection and try again.', true);
+      return false;
+    } finally { setBusy(false); }
+  }
+
+  // ---------- helpers ----------
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const cur = () => lib.passages.find(p => p.id === prefs.current) || lib.passages[0];
+  const WORD = /[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu;
+  function tokenize(text) {
+    const out = []; let last = 0, m; WORD.lastIndex = 0;
+    while ((m = WORD.exec(text))) {
+      if (m.index > last) out.push({ w: false, v: text.slice(last, m.index) });
+      out.push({ w: true, v: m[0] }); last = WORD.lastIndex;
+    }
+    if (last < text.length) out.push({ w: false, v: text.slice(last) });
+    return out;
+  }
+  const norm = s => s.toLowerCase().replace(/[’‘]/g, "'").normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}']/gu, '');
+  const wordCount = t => (t.match(WORD) || []).length;
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function audioType(f) {
+    const ext = (f.name.match(/\.([a-z0-9]+)$/i) || [])[1];
+    const e = ext ? ext.toLowerCase() : '';
+    if (AUDIO_TYPES[e]) return { ext: e, type: AUDIO_TYPES[e] };
+    if (f.type && f.type.startsWith('audio/')) {
+      const k = Object.keys(AUDIO_TYPES).find(x => AUDIO_TYPES[x] === f.type);
+      return { ext: k || 'mp3', type: k ? f.type : 'audio/mpeg' };
+    }
+    return null;
+  }
+
+  // ---------- library list ----------
+  function renderList() {
+    const ul = $('list'); ul.innerHTML = '';
+    if (!lib.passages.length) {
+      const li = document.createElement('li'); li.className = 'note'; li.style.margin = '0 10px';
+      li.textContent = canWrite ? 'No passages yet. Click + New to add one.' : 'No passages yet.';
+      ul.append(li); return;
+    }
+    for (const p of lib.passages) {
+      const li = document.createElement('li');
+      const b = document.createElement('button'); b.type = 'button';
+      b.setAttribute('aria-current', String(p.id === cur().id));
+      const t = document.createElement('span'); t.className = 'lt'; t.textContent = p.title || 'Untitled';
+      const s = document.createElement('span'); s.className = 'ls';
+      s.textContent = wordCount(p.text) + ' words' + (p.audio.length ? ' · ' + p.audio.length + ' audio' : '') + (best[p.id] != null ? ' · best ' + best[p.id] + '%' : '');
+      b.append(t, s);
+      b.onclick = () => { prefs.current = p.id; savePrefs(); showPassage(); };
+      li.append(b); ul.append(li);
+    }
+  }
+
+  // ---------- practice ----------
+  let tokens = [], blanks = new Set(), hints = 0;
+  function buildBlanks() {
+    const p = cur(); tokens = p ? tokenize(p.text) : [];
+    const elig = [];
+    tokens.forEach((t, i) => { if (t.w && !STOP.has(t.v.toLowerCase())) elig.push(i); });
+    let n = Math.round(elig.length * prefs.pct / 100);
+    if (prefs.pct > 0 && elig.length && n === 0) n = 1;
+    blanks = new Set(shuffle(elig).slice(0, n));
+    hints = 0; $('nudge').hidden = true;
+    renderText();
+  }
+  function inputs() { return [...$('text').querySelectorAll('input.blank')]; }
+  function renderText() {
+    const el = $('text'); el.innerHTML = '';
+    const p = cur(); if (!p) return;
+    const read = prefs.mode === 'read';
+    el.classList.toggle('read', read);
+    if (read) { el.textContent = p.text; return; }
+    let n = 0;
+    tokens.forEach((t, i) => {
+      if (!blanks.has(i)) { el.append(document.createTextNode(t.v)); return; }
+      const inp = document.createElement('input');
+      inp.className = 'blank'; inp.type = 'text'; inp.id = 'b' + i;
+      inp.autocomplete = 'off'; inp.spellcheck = false; inp.setAttribute('autocapitalize', 'off'); inp.setAttribute('autocorrect', 'off');
+      inp.dataset.answer = t.v;
+      inp.setAttribute('aria-label', 'Blank ' + (++n));
+      inp.style.width = 'calc(' + Math.max(t.v.length, 2) + 'ch + 1.3em)';
+      if (prefs.first) inp.placeholder = t.v[0] + '…';
+      el.append(inp);
+    });
+    updateScore();
+  }
+  function nextBlank(from) {
+    const all = inputs(); const i = all.indexOf(from);
+    const rest = all.slice(i + 1).concat(all.slice(0, i));
+    return rest.find(x => !x.classList.contains('ok') && !x.classList.contains('revealed'));
+  }
+  let checked = false;
+  function updateScore() {
+    const all = inputs();
+    if (!all.length) { $('score').textContent = 'No blanks yet. Raise the amount above to hide some words.'; return; }
+    const ok = all.filter(x => x.classList.contains('ok')).length;
+    const filled = all.filter(x => x.value.trim()).length;
+    const parts = ['<strong>' + all.length + '</strong> blanks', '<strong>' + filled + '</strong> filled'];
+    if (checked || ok) parts.push('<strong class="good">' + ok + '</strong> <span class="good">correct</span>');
+    if (hints) parts.push(hints + ' hint' + (hints > 1 ? 's' : ''));
+    $('score').innerHTML = parts.join(' · ');
+  }
+  function check() {
+    const all = inputs(); if (!all.length) return;
+    let ok = 0, revealed = 0;
+    for (const x of all) {
+      if (x.classList.contains('revealed')) { revealed++; continue; }
+      const good = norm(x.value) === norm(x.dataset.answer);
+      x.classList.toggle('ok', good); x.classList.toggle('bad', !good);
+      if (good) ok++;
+    }
+    checked = true; updateScore();
+    const pct = Math.round(ok / all.length * 100);
+    const p = cur();
+    if (!revealed && !hints && pct > (best[p.id] || 0)) { best[p.id] = pct; ls.set('recite.best', best); renderList(); updateMeta(); }
+    if (pct === 100 && !revealed) {
+      $('nudgeText').textContent = hints ? 'All correct, with ' + hints + ' hint' + (hints > 1 ? 's' : '') + '.' : 'Perfect score at ' + prefs.pct + '% hidden.';
+      $('harderBtn').hidden = prefs.pct >= 100;
+      $('nudge').hidden = false;
+    } else {
+      $('nudge').hidden = true;
+      const firstBad = all.find(x => x.classList.contains('bad'));
+      if (firstBad) firstBad.focus();
+    }
+  }
+  let lastFocus = null;
+  $('text').addEventListener('focusin', e => { if (e.target.matches('input.blank')) lastFocus = e.target; });
+  $('text').addEventListener('input', e => {
+    const x = e.target; if (!x.matches('input.blank')) return;
+    x.classList.remove('bad');
+    if (prefs.live && norm(x.value) === norm(x.dataset.answer)) {
+      x.classList.add('ok');
+      const n = nextBlank(x); if (n) n.focus();
+    } else x.classList.remove('ok');
+    updateScore();
+  });
+  $('text').addEventListener('keydown', e => {
+    const x = e.target; if (!x.matches('input.blank')) return;
+    if (e.key === 'Enter' || (e.key === ' ' && x.value.trim())) {
+      e.preventDefault();
+      const all = inputs(); const n = all[all.indexOf(x) + 1];
+      if (n) n.focus(); else if (e.key === 'Enter') check();
+    }
+  });
+  $('hintBtn').addEventListener('mousedown', e => e.preventDefault());
+  $('hintBtn').onclick = () => {
+    const x = lastFocus && document.body.contains(lastFocus) && !lastFocus.classList.contains('ok') ? lastFocus : inputs().find(i => !i.classList.contains('ok') && !i.classList.contains('revealed'));
+    if (!x) return;
+    const ans = x.dataset.answer, v = x.value;
+    let k = 0; while (k < v.length && k < ans.length && v[k].toLowerCase() === ans[k].toLowerCase()) k++;
+    x.value = ans.slice(0, k + 1); hints++;
+    x.focus(); x.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  $('checkBtn').onclick = check;
+  $('revealBtn').onclick = () => {
+    for (const x of inputs()) if (!x.classList.contains('ok')) { x.value = x.dataset.answer; x.classList.remove('bad'); x.classList.add('revealed'); x.readOnly = true; }
+    updateScore();
+  };
+  $('shuffleBtn').onclick = () => { checked = false; buildBlanks(); };
+  $('harderBtn').onclick = () => setPct(Math.min(100, prefs.pct + 10));
+
+  function setPct(v) {
+    prefs.pct = v; $('pct').value = v; $('pctOut').textContent = v + '%'; savePrefs(); checked = false; buildBlanks();
+  }
+  $('pct').addEventListener('input', e => { $('pctOut').textContent = e.target.value + '%'; });
+  $('pct').addEventListener('change', e => setPct(+e.target.value));
+  $('presets').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setPct(+b.dataset.p); });
+  $('optFirst').onchange = e => {
+    prefs.first = e.target.checked; savePrefs();
+    for (const x of inputs()) x.placeholder = prefs.first ? x.dataset.answer[0] + '…' : '';
+  };
+  $('optLive').onchange = e => { prefs.live = e.target.checked; savePrefs(); };
+
+  function setMode(m) {
+    prefs.mode = m; savePrefs();
+    $('tabPractice').setAttribute('aria-selected', String(m === 'practice'));
+    $('tabRead').setAttribute('aria-selected', String(m === 'read'));
+    $('practiceBar').hidden = m !== 'practice';
+    $('practiceFoot').hidden = m !== 'practice';
+    renderText();
+  }
+  $('tabPractice').onclick = () => setMode('practice');
+  $('tabRead').onclick = () => setMode('read');
+
+  // ---------- audio ----------
+  function renderAudio() {
+    const p = cur(), ul = $('tracks');
+    ul.innerHTML = '';
+    for (const a of (p ? p.audio : [])) {
+      const li = document.createElement('li'); li.className = 'track';
+      const n = document.createElement('span'); n.className = 'tn'; n.textContent = a.name; n.title = a.name;
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'danger owner-only'; del.textContent = 'Remove';
+      del.onclick = async () => {
+        if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = 'Confirm remove'; setTimeout(() => { del.classList.remove('armed'); del.textContent = 'Remove'; }, 3000); return; }
+        const next = clone(lib), np = next.passages.find(x => x.id === p.id);
+        np.audio = np.audio.filter(x => x.id !== a.id);
+        if (await save(next, { [a.file]: null }, 'Audio removed')) { renderAudio(); updateMeta(); renderList(); }
+      };
+      const au = document.createElement('audio'); au.controls = true; au.preload = 'metadata';
+      au.src = audioSrc(a); au.loop = prefs.loop;
+      au.addEventListener('play', () => { for (const o of ul.querySelectorAll('audio')) if (o !== au) o.pause(); });
+      au.addEventListener('loadedmetadata', () => { au.playbackRate = +prefs.speed; });
+      li.append(n, del, au); ul.append(li);
+    }
+    $('audioEmpty').hidden = !!(p && p.audio.length);
+  }
+  async function addAudio(files) {
+    if (!canWrite) return;
+    const p = cur(); if (!p) return;
+    const next = clone(lib), np = next.passages.find(x => x.id === p.id);
+    const out = {}, urls = []; const skipped = [];
+    for (const f of files) {
+      const t = audioType(f);
+      if (!t) { skipped.push(f.name + ' is not an audio file'); continue; }
+      if (f.size > MAX_AUDIO) { skipped.push(f.name + ' is over 15 MB'); continue; }
+      const id = uid(), path = 'audio/' + id + '.' + t.ext;
+      out[path] = { content: f, contentType: t.type };
+      np.audio.push({ id, name: f.name, file: path });
+      urls.push([id, f]);
+    }
+    if (skipped.length) toast('Skipped: ' + skipped.join('; ') + '.', true);
+    if (!urls.length) return;
+    if (await save(next, out, urls.length === 1 ? 'Audio added' : urls.length + ' audio files added')) {
+      for (const [id, f] of urls) localAudio.set(id, URL.createObjectURL(f));
+      renderAudio(); updateMeta(); renderList();
+    }
+  }
+  $('audioFile').onchange = e => { addAudio([...e.target.files]); e.target.value = ''; };
+  const drop = $('viewPassage');
+  drop.addEventListener('dragover', e => { if (canWrite && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); $('audioEmpty').classList.add('drag'); } });
+  drop.addEventListener('dragleave', e => { if (!drop.contains(e.relatedTarget)) $('audioEmpty').classList.remove('drag'); });
+  drop.addEventListener('drop', e => { if (!canWrite || !e.dataTransfer.files.length) return; e.preventDefault(); $('audioEmpty').classList.remove('drag'); addAudio([...e.dataTransfer.files]); });
+  $('speed').onchange = e => { prefs.speed = e.target.value; savePrefs(); for (const a of document.querySelectorAll('#tracks audio')) a.playbackRate = +prefs.speed; };
+  $('loop').onchange = e => { prefs.loop = e.target.checked; savePrefs(); for (const a of document.querySelectorAll('#tracks audio')) a.loop = prefs.loop; };
+
+  // ---------- passage view ----------
+  function updateMeta() {
+    const p = cur(); if (!p) { $('meta').textContent = ''; return; }
+    const n = p.audio.length;
+    $('meta').textContent = wordCount(p.text) + ' words · ' + n + ' audio clip' + (n === 1 ? '' : 's') + (best[p.id] != null ? ' · your best ' + best[p.id] + '%' : '');
+  }
+  function showPassage() {
+    $('viewEdit').hidden = true; $('viewPassage').hidden = false;
+    const p = cur();
+    if (p) prefs.current = p.id;
+    $('ptitle').textContent = p ? (p.title || 'Untitled') : 'No passages yet';
+    resetDel(); renderList(); updateMeta(); checked = false; buildBlanks(); setMode(prefs.mode); renderAudio();
+  }
+
+  let delTimer = null;
+  function resetDel() { const b = $('delBtn'); b.classList.remove('armed'); b.textContent = 'Delete'; clearTimeout(delTimer); }
+  $('delBtn').onclick = async () => {
+    const b = $('delBtn');
+    if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Confirm delete'; delTimer = setTimeout(resetDel, 3500); return; }
+    const p = cur(); if (!p) return;
+    const next = clone(lib); next.passages = next.passages.filter(x => x.id !== p.id);
+    const files = {}; p.audio.forEach(a => { files[a.file] = null; });
+    if (await save(next, files, 'Passage deleted')) { prefs.current = next.passages[0] ? next.passages[0].id : null; savePrefs(); showPassage(); }
+    else resetDel();
+  };
+
+  // ---------- editor ----------
+  let editing = null;
+  function openEditor(p) {
+    editing = p ? p.id : null;
+    $('editHeading').textContent = p ? 'Edit passage' : 'New passage';
+    $('fTitle').value = p ? p.title : ''; $('fText').value = p ? p.text : '';
+    $('formErr').hidden = true;
+    $('viewPassage').hidden = true; $('viewEdit').hidden = false;
+    (p ? $('fText') : $('fTitle')).focus();
+  }
+  $('newBtn').onclick = () => openEditor(null);
+  $('editBtn').onclick = () => { if (cur()) openEditor(cur()); };
+  $('cancelEdit').onclick = showPassage;
+  $('txtFile').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      $('fText').value = String(r.result).replace(/\r\n/g, '\n').trim();
+      if (!$('fTitle').value.trim()) $('fTitle').value = f.name.replace(/\.[^.]+$/, '');
+    };
+    r.onerror = () => { $('formErr').hidden = false; $('formErr').textContent = 'That file could not be read. Try saving it as plain text (.txt).'; };
+    r.readAsText(f); e.target.value = '';
+  };
+  $('editForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const title = $('fTitle').value.trim() || 'Untitled', text = $('fText').value.replace(/\r\n/g, '\n').trim();
+    if (!wordCount(text)) { $('formErr').hidden = false; $('formErr').textContent = 'Add some text to memorize before saving.'; $('fText').focus(); return; }
+    const next = clone(lib); let id = editing;
+    if (editing) { const p = next.passages.find(x => x.id === editing); p.title = title; p.text = text; }
+    else { id = uid(); next.passages.unshift({ id, title, text, audio: [] }); }
+    if (await save(next, null, editing ? 'Passage updated' : 'Passage added')) { prefs.current = id; savePrefs(); showPassage(); }
+  });
+
+  // ---------- import from the earlier, browser-only version ----------
+  let oldPassages = [];
+  function oldAudio(pid) {
+    return new Promise(res => {
+      try {
+        const r = indexedDB.open('recite', 1);
+        r.onupgradeneeded = () => { r.transaction.abort(); res([]); };
+        r.onerror = () => res([]);
+        r.onsuccess = () => {
+          try { const q = r.result.transaction('audio').objectStore('audio').index('pid').getAll(pid); q.onsuccess = () => res(q.result || []); q.onerror = () => res([]); }
+          catch (e) { res([]); }
+        };
+      } catch (e) { res([]); }
+    });
+  }
+  function checkImport() {
+    const old = ls.get('recite.passages', []);
+    const have = new Set(lib.passages.map(p => p.id));
+    oldPassages = (Array.isArray(old) ? old : []).filter(p => p && p.id !== SAMPLE.id && !have.has(p.id) && p.text);
+    $('importBox').hidden = !oldPassages.length;
+    if (oldPassages.length) $('importText').textContent = 'This browser has ' + oldPassages.length + ' passage' + (oldPassages.length > 1 ? 's' : '') + ' from the earlier version of the app that only you can see.';
+  }
+  $('importBtn').onclick = async () => {
+    const next = clone(lib), files = {}; let total = 0, skipped = 0;
+    for (const op of oldPassages) {
+      const np = { id: op.id, title: op.title || 'Untitled', text: op.text, audio: [] };
+      for (const a of await oldAudio(op.id)) {
+        const f = new File([a.blob], a.name, { type: a.blob.type });
+        const t = audioType(f);
+        if (!t || f.size > MAX_AUDIO || total + f.size > 55 * 1024 * 1024) { skipped++; continue; }
+        const id = uid(), path = 'audio/' + id + '.' + t.ext;
+        files[path] = { content: a.blob, contentType: t.type }; total += f.size;
+        np.audio.push({ id, name: a.name, file: path });
+        localAudio.set(id, URL.createObjectURL(a.blob));
+      }
+      next.passages.push(np);
+    }
+    if (await save(next, files, 'Added ' + oldPassages.length + ' passage' + (oldPassages.length > 1 ? 's' : '') + (skipped ? ' (' + skipped + ' audio file' + (skipped > 1 ? 's' : '') + ' too large to copy)' : ''))) {
+      $('importBox').hidden = true; showPassage();
+    }
+  };
+
+  // ---------- init ----------
+  $('pct').value = prefs.pct; $('pctOut').textContent = prefs.pct + '%';
+  $('optFirst').checked = prefs.first; $('optLive').checked = prefs.live;
+  $('speed').value = prefs.speed; $('loop').checked = prefs.loop;
+  $('ptitle').textContent = 'Loading…';
+  setRole(false);
+  loadLib().then(() => { showPassage(); if (canWrite) checkImport(); });
+
+  (async () => {
+    if (!window.claude || !window.claude.use) return;
+    try {
+      art = await window.claude.use('artifact');
+      if (!art) return;
+      const user = await window.claude.use('user');
+      const ok = user ? await user.canEdit() : true;
+      setRole(!!ok);
+    } catch (e) {}
+  })();
+})();
+</script>
+
