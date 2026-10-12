@@ -10,19 +10,19 @@
       "id": "Part 2 Matthew 17-32",
       "title": "Part 2 Matthew 17-32",
       "file": "passages/Part 2 Matthew 17-32.txt",
-      "audio": []
+      "audio": ["audio/Matthew 5 Pt2.mp3"]
     },
     {
       "id": "Part 3 Matthew 33-48",
       "title": "Part 3 Matthew 33-48",
       "file": "passages/Part 3 Matthew 33-48.txt",
-      "audio": []
+      "audio": ["audio/Matthew 5 Pt3.mp3"]
     },
     {
       "id": "Matthew 5 (Full)",
       "title": "Matthew 5 (Full)",
       "file": "passages/Matthew 5 (Full).txt",
-      "audio": []
+      "audio": ["audio/Matthew 5 complete.mp3"]
     }
   ]
 }
