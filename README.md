@@ -1,50 +1,115 @@
 # Recite
 
-A memorization website. Pick a passage, choose how much of it to blank out, and fill in the gaps. Each passage can have audio to listen along with. Each person enters their email, and their practice history is kept under it in their own browser.
+**Memorize passages one gap at a time.**
 
-## Put it online with GitHub Pages
+Recite is a website for memorizing text. Pick a passage, choose how much of it to hide, and fill in the missing words until you know it by heart. Each passage can have audio to listen along with, and everyone's progress is tracked under their email.
 
-1. On github.com, open the repository (it must be **public** for GitHub Pages on a free account).
-2. Click **Add file → Upload files**, drag in everything from this folder (`index.html`, `library.json`, `README.md`, and the `passages` and `audio` folders), and click **Commit changes**.
-3. Go to **Settings → Pages**. Under "Build and deployment", set **Source** to *Deploy from a branch*, choose the **main** branch and the **/ (root)** folder, and click **Save**.
-4. After a minute or two the site is live at `https://<your-username>.github.io/<repo-name>/`.
+🔗 **Live site:** https://engitakla.github.io/Recite/
 
-Opening `index.html` by double-clicking it won't load the passages. Use the GitHub Pages address.
+---
 
-## Add a passage
+## How to practice
 
-1. Upload a plain text file into the `passages` folder, for example `passages/psalm-23.txt`. Line breaks are kept.
-2. Edit `library.json` (click the file, then the pencil icon) and add an entry:
+1. **Sign in with your email.** Your scores and history are saved under it. Next time, click your email under *Used on this device*.
+2. **Pick a passage** from the list on the left.
+3. **Listen.** Play the recording, adjust the **Speed** (0.5×–1.5×), or turn on **Repeat**. **Read** mode shows the full text.
+4. **Fill in the blanks.** Use the **Blanked out** slider (or the 25 / 50 / 60 / 75 / 100 buttons) to choose how much is hidden, then type the missing words.
+   - Blanks turn green as soon as you type the right word, and the cursor jumps to the next one.
+   - **Space** or **Enter** moves to the next blank.
+   - **Hint** adds the next letter. **Show first letters** gives a head start on every blank.
+   - **Check** marks your answers. **Reveal answers** shows the rest. **New blanks** hides a different set of words.
+5. **Level up.** After a perfect score, click **Hide 10% more**. Work your way up to 100%.
+6. **See your progress.** **My progress** shows your sessions, best scores, and the hardest level you've completed for each passage.
+
+Answers aren't case sensitive, and punctuation is ignored. Verse numbers and small words (*a, the, of, and*…) always stay visible.
+
+---
+
+## Privacy
+
+- Your email and history are stored **only in your own browser**. Nothing is sent to anyone, including the site owner.
+- History doesn't move between devices or browsers, and clearing your browser data erases it.
+
+---
+
+## Managing the site
+
+### Files
+
+| File / folder | What it is |
+|---|---|
+| `index.html` | The website |
+| `library.json` | The list of passages and their audio |
+| `passages/` | One `.txt` file per passage |
+| `audio/` | Recordings (`.mp3`) |
+
+### Add a passage
+
+1. Upload a `.txt` file to the `passages` folder (**Add file → Upload files**). Line breaks are kept, so one verse per line works well.
+2. Open `library.json`, click the ✏️ pencil icon, and add an entry:
 
 ```json
 {
   "passages": [
     {
-      "id": "gettysburg",
-      "title": "Gettysburg Address (example)",
-      "file": "passages/gettysburg.txt",
-      "audio": []
+      "id": "Part 1 Matthew 1-16",
+      "title": "Part 1 Matthew 1-16",
+      "file": "passages/Part 1 Matthew 1-16.txt",
+      "audio": ["audio/Matthew 5 Pt1.mp3"]
     },
     {
-      "id": "psalm-23",
-      "title": "Psalm 23",
-      "file": "passages/psalm-23.txt",
-      "audio": ["audio/psalm-23.mp3"]
+      "id": "Matthew 6 Part 1",
+      "title": "Matthew 6 Part 1",
+      "file": "passages/Matthew 6 Part 1.txt",
+      "audio": []
     }
   ]
 }
 ```
 
-- `id` must be unique and should never change, because people's history is stored under it.
-- Separate entries with a comma, and don't leave a comma after the last one.
-- To remove the example, delete its entry and `passages/gettysburg.txt`.
+3. Click **Commit changes**. The passage shows up on the site within a minute or two.
 
-## Add audio
+### Add audio
 
-Upload the recording into the `audio` folder, then list it in that passage's `audio` list. To show a friendlier name than the file name, use `{ "file": "audio/psalm-23.mp3", "name": "Read slowly" }`. Keep files under 25 MB (GitHub's limit for web uploads); MP3 is the safest format.
+1. Upload the recording to the `audio` folder. MP3 works everywhere, and GitHub's website accepts files up to 25 MB.
+2. Add it to the passage's `audio` list in `library.json`:
 
-## About user history
+```json
+"audio": ["audio/Matthew 6 Part 1.mp3"]
+```
 
-- History is saved in each person's browser, under the email they type in. It doesn't follow them to another device or browser.
-- Nothing is sent anywhere, so the site owner can't see anyone's history.
-- Clearing browser data erases it.
+To show a friendlier label, or to add more than one recording:
+
+```json
+"audio": [
+  { "file": "audio/Matthew 6 Part 1.mp3", "name": "Normal speed" },
+  { "file": "audio/Matthew 6 Part 1 slow.mp3", "name": "Read slowly" }
+]
+```
+
+### Rules for `library.json`
+
+- ✅ Put a comma between entries. ❌ Don't put a comma after the last one.
+- File names must match **exactly**, including capital letters, spaces, and the extension.
+- Each `id` must be unique. **Never change an `id`**, because people's history is saved under it. The `title` can be changed any time.
+- Passages appear in the same order as in the file.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| "The passages could not be loaded" | There's a comma mistake in `library.json`. Paste it into [jsonlint.com](https://jsonlint.com) to find it. |
+| "The text file … was not found" | The `file` name doesn't match the file in `passages/`. |
+| Audio won't play | The name in `audio` doesn't match the file in `audio/`. |
+| Changes don't appear | Wait a minute or two, then refresh. |
+| Nothing loads when opening `index.html` from your computer | That's expected. Use the live site link. |
+
+### First-time setup
+
+**Settings → Pages →** set **Source** to *Deploy from a branch*, choose **main** and **/ (root)**, and click **Save**. The repository must be public.
+
+---
+
+## Credits
+
+Scripture taken from the New King James Version®. Copyright © 1982 by Thomas Nelson. Used by permission. All rights reserved.
